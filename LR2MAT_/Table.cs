@@ -106,7 +106,7 @@ namespace LR1MAT
             }
             return new Support(false, 0);
         }
-        void iter(int x)
+        int iter(int x)
         {
             int y = 0;
             double mini = double.MaxValue;
@@ -114,6 +114,7 @@ namespace LR1MAT
             {
                 double relation = simplex_table[i, 0] / simplex_table[i, x];
                 if (relation < mini && relation >= 0) { mini = relation; y = i; }
+                if (mini == double.MaxValue) { return 1; }
             }
             double[,] table2 = new double[(basic_variables + 1), (free_variables + 1)];
             string _ = row[x];
@@ -145,27 +146,37 @@ namespace LR1MAT
                 }
             }
             simplex_table = table2;
+            return 0;
         }
         public virtual void end_print(double F)
         {
             Console.WriteLine($"F = {-F}");
         }
-        public void simplex_metod()
+        public int simplex_metod()
         {
             print();
             Support Flag1 = Negative_in_free_members_column();
             while (Flag1.Switch)
             {
                 int x = 0;
-                for (int i = 1; i < free_variables + 1; i++) if (simplex_table[Flag1.index, i] < 0) { x = i; break; }
-                iter(x);
+                int _count = 0;
+                for (int i = 1; i < free_variables + 1; i++) if (simplex_table[Flag1.index, i] < 0)
+                    {
+                        if (_count == 0) x = i;
+                        ++_count;
+                    }
+                if (_count + 1 == simplex_table.GetLength(1))
+                {
+                    return 1;
+                }
+                if (iter(x) == 1) { return 2; }
                 print();
                 Flag1 = Negative_in_free_members_column();
             }
             Support Flag2 = Positive_in_last_row();
             while (Flag2.Switch)
             {
-                iter(Flag2.index);
+                if (iter(Flag2.index) == 1) { return 2; }
                 print();
                 Flag2 = Positive_in_last_row();
             }
@@ -174,6 +185,7 @@ namespace LR1MAT
                 Console.Write($"{this.column[i]} = {this.simplex_table[i, 0]}   ");
             }
             end_print(this.simplex_table[basic_variables, 0]);
+            return 0;
         }
     }
 }
