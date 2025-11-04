@@ -1,4 +1,5 @@
 ﻿using ConsoleTables;
+using System.Diagnostics.Metrics;
 namespace LR1MAT
 {
     struct Support
@@ -18,9 +19,10 @@ namespace LR1MAT
         public double[] c;
         public double[,] A;
         public double[] b;
-        private string[] column;
-        private string[] row;
-        private double[,] simplex_table;
+        protected string[] column;
+        protected string[] row;
+        protected double[,] simplex_table;
+        protected double[] end_args;
         int free_variables;
         int basic_variables;
         public Table(double[] c, double[,] A, double[] b)
@@ -33,6 +35,7 @@ namespace LR1MAT
             this.column = new string[basic_variables + 1]; this.column[^1] = "F";
             this.row = new string[free_variables + 1]; this.row[0] = "S";
             simplex_table = new double[(basic_variables + 1), (free_variables + 1)];
+            end_args = new double[c.Length];
             for (int i = 0; i < basic_variables; i++)
             {
                 this.column[i] = $"X{i + 1 + free_variables}";
@@ -110,12 +113,18 @@ namespace LR1MAT
         {
             int y = 0;
             double mini = double.MaxValue;
+            int counter = 0;
+            for (int i = 0; i < basic_variables; i++)
+            {
+                if (simplex_table[i, x] < 0) counter++;
+            }
+            if (counter == basic_variables) { return 2; }
             for (int i = 0; i < basic_variables; i++)
             {
                 double relation = simplex_table[i, 0] / simplex_table[i, x];
                 if (relation < mini && relation >= 0) { mini = relation; y = i; }
-                if (mini == double.MaxValue) { return 1; }
             }
+            if (mini == double.MaxValue) { return 1; }
             double[,] table2 = new double[(basic_variables + 1), (free_variables + 1)];
             string _ = row[x];
             row[x] = column[y];
@@ -150,7 +159,7 @@ namespace LR1MAT
         }
         public virtual void end_print(double F)
         {
-            Console.WriteLine($"F = {-F}");
+            Console.WriteLine($"F = {-F:F2}");
         }
         public int simplex_metod()
         {
@@ -163,27 +172,33 @@ namespace LR1MAT
                 for (int i = 1; i < free_variables + 1; i++) if (simplex_table[Flag1.index, i] < 0)
                     {
                         if (_count == 0) x = i;
-                        ++_count;
                     }
-                if (_count + 1 == simplex_table.GetLength(1))
-                {
-                    return 1;
-                }
-                if (iter(x) == 1) { return 2; }
-                print();
+                int Error = iter(x);
+                if (Error == 1) { return 1; }
+                else if (Error == 2) { return 2; }
+                    print();
                 Flag1 = Negative_in_free_members_column();
             }
             Support Flag2 = Positive_in_last_row();
             while (Flag2.Switch)
             {
-                if (iter(Flag2.index) == 1) { return 2; }
+                int Error = iter(Flag2.index);
+                if (Error == 1) { return 1; }
+                else if (Error == 2) { return 2; }
                 print();
                 Flag2 = Positive_in_last_row();
             }
             for (int i = 0; i < basic_variables; i++)
             {
-                Console.Write($"{this.column[i]} = {this.simplex_table[i, 0]}   ");
+                int number = (int)this.column[i][1] - (int)'0';
+                if (1 <= number && number <= c.Length)
+                    end_args[number - 1] = this.simplex_table[i, 0];
             }
+            for (int i = 0; i < end_args.Length; ++i)
+            {
+                Console.Write($"X{i + 1} = {end_args[i]:F2}\t");
+            }
+
             end_print(this.simplex_table[basic_variables, 0]);
             return 0;
         }
